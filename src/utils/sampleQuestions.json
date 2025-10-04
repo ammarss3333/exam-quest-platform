@@ -1,0 +1,111 @@
+{
+  "questions": [
+    {
+      "type": "mcq",
+      "category": "Mathematics",
+      "question": "What is the value of π (pi) rounded to two decimal places?",
+      "options": ["3.12", "3.14", "3.16", "3.18"],
+      "correctAnswer": "3.14",
+      "points": 10,
+      "difficulty": "easy",
+      "explanation": "Pi (π) is approximately 3.14159, which rounds to 3.14"
+    },
+    {
+      "type": "true-false",
+      "category": "Science",
+      "question": "Water boils at 100°C at sea level under standard atmospheric pressure.",
+      "correctAnswer": "true",
+      "points": 5,
+      "difficulty": "easy",
+      "explanation": "At standard atmospheric pressure (1 atm), water boils at exactly 100°C or 212°F"
+    },
+    {
+      "type": "short-answer",
+      "category": "History",
+      "question": "Who was the first president of the United States?",
+      "correctAnswer": "George Washington",
+      "points": 15,
+      "difficulty": "medium",
+      "explanation": "George Washington served as the first U.S. president from 1789-1797"
+    },
+    {
+      "type": "drag-drop",
+      "category": "Programming",
+      "question": "Match the programming languages with their primary use:",
+      "options": ["Python", "JavaScript", "SQL"],
+      "correctAnswer": [
+        {"item": "Python", "match": "Data Science"},
+        {"item": "JavaScript", "match": "Web Development"},
+        {"item": "SQL", "match": "Database Management"}
+      ],
+      "points": 20,
+      "difficulty": "hard",
+      "explanation": "Each language has its primary domain: Python for data science and AI, JavaScript for web development, SQL for database queries"
+    },
+    {
+      "type": "reading-comprehension",
+      "category": "English",
+      "passage": "The Industrial Revolution, which began in Britain in the late 18th century, marked a major turning point in history. It transformed economies that had been based on agriculture and handicrafts into economies based on large-scale industry, mechanized manufacturing, and the factory system. New machines, new power sources, and new ways of organizing work made existing industries more productive and efficient. The textile industry was one of the first to adopt these changes, with inventions like the spinning jenny and power loom revolutionizing cloth production.",
+      "question": "According to the passage, what was one of the first industries to adopt Industrial Revolution changes?",
+      "options": ["Agriculture", "Textile industry", "Mining", "Transportation"],
+      "correctAnswer": "Textile industry",
+      "points": 15,
+      "difficulty": "medium",
+      "explanation": "The passage explicitly states that 'The textile industry was one of the first to adopt these changes'"
+    },
+    {
+      "type": "mcq",
+      "category": "Geography",
+      "question": "Which is the largest ocean on Earth?",
+      "options": ["Atlantic Ocean", "Indian Ocean", "Arctic Ocean", "Pacific Ocean"],
+      "correctAnswer": "Pacific Ocean",
+      "points": 10,
+      "difficulty": "easy",
+      "explanation": "The Pacific Ocean covers approximately 165 million square kilometers, making it the largest ocean"
+    },
+    {
+      "type": "reading-comprehension",
+      "category": "Science",
+      "passage": "Photosynthesis is the process by which green plants and some other organisms use sunlight to synthesize foods from carbon dioxide and water. Photosynthesis in plants generally involves the green pigment chlorophyll and generates oxygen as a byproduct. The process occurs in two stages: the light-dependent reactions and the light-independent reactions (Calvin cycle). During the light-dependent reactions, which take place in the thylakoid membranes, chlorophyll absorbs light energy that is used to split water molecules, releasing oxygen and producing ATP and NADPH.",
+      "question": "What is released as a byproduct during the light-dependent reactions of photosynthesis?",
+      "options": ["Carbon dioxide", "Oxygen", "Glucose", "Nitrogen"],
+      "correctAnswer": "Oxygen",
+      "points": 15,
+      "difficulty": "medium",
+      "explanation": "The passage states that during light-dependent reactions, water molecules are split, releasing oxygen"
+    },
+    {
+      "type": "true-false",
+      "category": "Mathematics",
+      "question": "A prime number is a number that has exactly two distinct positive divisors: 1 and itself.",
+      "correctAnswer": "true",
+      "points": 5,
+      "difficulty": "easy",
+      "explanation": "This is the definition of a prime number. Examples include 2, 3, 5, 7, 11, etc."
+    },
+    {
+      "type": "drag-drop",
+      "category": "Biology",
+      "question": "Match the organs with their primary functions:",
+      "options": ["Heart", "Lungs", "Liver", "Kidneys"],
+      "correctAnswer": [
+        {"item": "Heart", "match": "Pumps blood"},
+        {"item": "Lungs", "match": "Gas exchange"},
+        {"item": "Liver", "match": "Detoxification"},
+        {"item": "Kidneys", "match": "Filter waste"}
+      ],
+      "points": 20,
+      "difficulty": "medium",
+      "explanation": "Each organ has a specific primary function in the human body"
+    },
+    {
+      "type": "short-answer",
+      "category": "Literature",
+      "question": "Who wrote the play 'Romeo and Juliet'?",
+      "correctAnswer": "William Shakespeare",
+      "points": 10,
+      "difficulty": "easy",
+      "explanation": "William Shakespeare wrote Romeo and Juliet around 1594-1596"
+    }
+  ]
+}
