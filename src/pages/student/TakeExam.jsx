@@ -93,11 +93,13 @@ const TakeExam = () => {
     if (!rawValue) return [];
 
     const references = [];
+    const seenIds = new Set();
     const pushId = (value) => {
       if (typeof value === 'string') {
         const trimmed = value.trim();
-        if (trimmed) {
+        if (trimmed && !seenIds.has(trimmed)) {
           references.push({ type: 'id', value: trimmed });
+          seenIds.add(trimmed);
         }
       }
     };
@@ -164,7 +166,7 @@ const TakeExam = () => {
     try {
       setLoading(true);
       const examData = await firestoreService.getOne('exams', examId);
-      
+
       if (!examData) {
         alert('Exam not found');
         navigate('/student/exams');
@@ -172,6 +174,8 @@ const TakeExam = () => {
       }
 
       setExam(examData);
+      setAnswers({});
+      setDragDropAnswers({});
       const durationInMinutes = Number(examData.duration) || 0;
       setTimeLeft(durationInMinutes * 60); // Convert minutes to seconds
 
