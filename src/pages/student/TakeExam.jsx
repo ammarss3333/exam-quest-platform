@@ -1,13 +1,10 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import confetti from 'canvas-confetti';
-import {
-  FaClock, FaCheckCircle, FaArrowRight, FaArrowLeft,
-  FaFlag
-} from 'react-icons/fa';
+import { FaArrowLeft, FaArrowRight, FaCheckCircle, FaClock, FaFlag } from 'react-icons/fa';
 import { firestoreService } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -76,164 +73,131 @@ const TakeExam = () => {
   const [submitting, setSubmitting] = useState(false);
   const [dragDropAnswers, setDragDropAnswers] = useState({});
 
+  const parseQuestionReferences = useMemo(() => {
+    const seenIds = new Set();
+
+    const pushId = (list, candidate) => {
+      if (!candidate && candidate !== 0) return list;
+      const normalized = typeof candidate === 'string' ? candidate : String(candidate);
+      const trimmed = normalized.trim();
+      if (!trimmed || seenIds.has(trimmed)) return list;
+      seenIds.add(trimmed);
+      return [...list, { type: 'id', value: trimmed }];
+    };
+
+    const pushInline = (list, candidate, fallbackKey) => {
+      if (!candidate || typeof candidate !== 'object') {
+        return fallbackKey ? pushId(list, fallbackKey) : list;
+      }
+
+      if (candidate.question && typeof candidate.question === 'object') {
+        return [...list, { type: 'inline', value: candidate.question }];
+      }
+
+      if (typeof candidate.id === 'string' && candidate.id.trim()) {
+        return pushId(list, candidate.id);
+      }
+
+      if (typeof candidate.questionId === 'string' && candidate.questionId.trim()) {
+        return pushId(list, candidate.questionId);
+      }
+
+      if (typeof candidate.questionID === 'string' && candidate.questionID.trim()) {
+        return pushId(list, candidate.questionID);
+      }
+
+      if (typeof candidate.id === 'number') {
+        return pushId(list, candidate.id);
+      }
+
+      return [...list, { type: 'inline', value: candidate }];
+    };
+
+    const handleEntry = (list, entry, fallbackKey) => {
+      if (entry === undefined || entry === null) {
+        return list;
+      }
+
+      if (typeof entry === 'string' || typeof entry === 'number') {
+        return pushId(list, entry);
+      }
+
+      if (Array.isArray(entry) || entry instanceof Set) {
+        const iterable = entry instanceof Set ? Array.from(entry) : entry;
+        return iterable.reduce((acc, current) => handleEntry(acc, current), list);
+      }
+
+      if (entry instanceof Map) {
+        return Array.from(entry.entries()).reduce((acc, [key, value]) => {
+          if (typeof value === 'boolean') {
+            return value ? pushId(acc, key) : acc;
+          }
+          return handleEntry(acc, value, key);
+        }, list);
+      }
+
+      if (typeof entry === 'object') {
+        if ('question' in entry && typeof entry.question === 'object') {
+          return [...list, { type: 'inline', value: entry.question }];
+        }
+
+        const handled = pushInline(list, entry, fallbackKey);
+        return handled;
+      }
+
+      return list;
+    };
+
+    return (rawValue) => {
+      seenIds.clear();
+
+      if (!rawValue) {
+        return [];
+      }
+
+      if (typeof rawValue === 'string') {
+        return rawValue
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean)
+          .reduce((acc, value) => pushId(acc, value), []);
+      }
+
+      if (Array.isArray(rawValue)) {
+        return rawValue.reduce((acc, entry) => handleEntry(acc, entry), []);
+      }
+
+      if (rawValue instanceof Set || rawValue instanceof Map) {
+        return handleEntry([], rawValue);
+      }
+
+      if (typeof rawValue === 'object') {
+        return Object.entries(rawValue).reduce((acc, [key, value]) => {
+          if (typeof value === 'boolean') {
+            return value ? pushId(acc, key) : acc;
+          }
+          return handleEntry(acc, value, key);
+        }, []);
+      }
+
+      return [];
+    };
+  }, []);
+
   useEffect(() => {
     loadExam();
   }, [examId]);
 
   useEffect(() => {
     if (timeLeft > 0) {
-      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+      const timer = setTimeout(() => setTimeLeft((prev) => prev - 1), 1000);
       return () => clearTimeout(timer);
-    } else if (timeLeft === 0 && exam) {
+    }
+
+    if (timeLeft === 0 && exam) {
       handleSubmit();
     }
-  }, [timeLeft]);
-
-  const parseQuestionReferences = (rawValue) => {
-    if (!rawValue) return [];
-
-    const references = [];
-    const seenIds = new Set();
-    const pushId = (value) => {
-      if (!value) return;
-
-      const normalized = typeof value === 'string' ? value : String(value);
-      const trimmed = normalized.trim();
-
-      if (trimmed && !seenIds.has(trimmed)) {
-        references.push({ type: 'id', value: trimmed });
-        seenIds.add(trimmed);
-      }
-    };
-
-    const pushInline = (value) => {
-      if (!value || typeof value !== 'object') {
-        return;
-      }
-
-      // Some legacy structures wrap the question object in a { question: {...} } container.
-      if (value.question && typeof value.question === 'object') {
-        references.push({ type: 'inline', value: value.question });
-        return;
-      }
-
-      references.push({ type: 'inline', value });
-    };
-
-    function pushEntry(entry) {
-      if (!entry) {
-        return;
-      }
-
-      if (typeof entry === 'string' || typeof entry === 'number') {
-        pushId(entry);
-        return;
-      }
-
-      if (entry instanceof Map) {
-        entry.forEach((mapValue, key) => {
-          if (typeof mapValue === 'boolean') {
-            if (mapValue) pushId(key);
-          } else {
-            pushEntry(mapValue);
-          }
-        });
-        return;
-      }
-
-      if (entry instanceof Set) {
-        entry.forEach(pushEntry);
-        return;
-      }
-
-      if (Array.isArray(entry)) {
-        entry.forEach(pushEntry);
-        return;
-      }
-
-      if (typeof entry === 'object') {
-        if (typeof entry.id === 'string' && entry.id.trim()) {
-          pushId(entry.id);
-          return;
-        }
-
-        if (typeof entry.questionId === 'string' && entry.questionId.trim()) {
-          pushId(entry.questionId);
-          return;
-        }
-
-        if (typeof entry.questionID === 'string' && entry.questionID.trim()) {
-          pushId(entry.questionID);
-          return;
-        }
-
-        // Firestore document references expose an id property, but double check
-        if (entry?.id && typeof entry.id === 'number') {
-          pushId(entry.id);
-          return;
-        }
-
-        pushInline(entry);
-      }
-    }
-
-    function pushEntryWithFallback(entry, fallbackKey) {
-      const beforeLength = references.length;
-      pushEntry(entry);
-
-      if (fallbackKey && references.length === beforeLength) {
-        pushId(fallbackKey);
-      }
-    }
-
-    if (typeof rawValue === 'string') {
-      rawValue
-        .split(',')
-        .map((value) => value.trim())
-        .filter(Boolean)
-        .forEach(pushId);
-      return references;
-    }
-
-    if (Array.isArray(rawValue)) {
-      rawValue.forEach(pushEntry);
-      return references;
-    }
-
-    if (rawValue instanceof Set) {
-      rawValue.forEach(pushEntry);
-      return references;
-    }
-
-    if (rawValue instanceof Map) {
-      rawValue.forEach((mapValue, key) => {
-        if (typeof mapValue === 'boolean') {
-          if (mapValue) pushId(key);
-        } else {
-          pushEntryWithFallback(mapValue, key);
-        }
-      });
-      return references;
-    }
-
-    if (rawValue && typeof rawValue === 'object') {
-      Object.entries(rawValue).forEach(([key, entryValue]) => {
-        if (typeof entryValue === 'boolean') {
-          if (entryValue) pushId(key);
-          return;
-        }
-
-        if (entryValue === undefined || entryValue === null) {
-          return;
-        }
-
-        pushEntryWithFallback(entryValue, key);
-      });
-      return references;
-    }
-
-    return references;
-  };
+  }, [timeLeft, exam]);
 
   const loadExam = async () => {
     try {
@@ -249,14 +213,14 @@ const TakeExam = () => {
       setExam(examData);
       setAnswers({});
       setDragDropAnswers({});
-      const durationInMinutes = Number(examData.duration) || 0;
-      setTimeLeft(durationInMinutes * 60); // Convert minutes to seconds
 
-      // Load questions
-      const preferredRefs = parseQuestionReferences(examData.selectedQuestions);
+      const durationInMinutes = Number(examData.duration);
+      setTimeLeft(Number.isFinite(durationInMinutes) && durationInMinutes > 0 ? durationInMinutes * 60 : 0);
+
+      const preferredRefs = parseQuestionReferences(examData?.selectedQuestions);
       const fallbackRefs = preferredRefs.length
         ? preferredRefs
-        : parseQuestionReferences(examData.questions);
+        : parseQuestionReferences(examData?.questions);
 
       if (!fallbackRefs.length) {
         console.warn('Exam has no questions configured');
@@ -269,24 +233,23 @@ const TakeExam = () => {
         fallbackRefs.map(async (reference, index) => {
           if (reference.type === 'inline') {
             const inlineQuestion = reference.value;
-            if (inlineQuestion && typeof inlineQuestion === 'object') {
-              return {
-                ...inlineQuestion,
-                id:
-                  typeof inlineQuestion.id === 'string' && inlineQuestion.id.trim()
-                    ? inlineQuestion.id.trim()
-                    : typeof inlineQuestion.questionId === 'string' && inlineQuestion.questionId.trim()
-                      ? inlineQuestion.questionId.trim()
-                      : `inline-${index}`,
-              };
+            if (!inlineQuestion || typeof inlineQuestion !== 'object') {
+              return null;
             }
-            return null;
+
+            const inlineId =
+              (typeof inlineQuestion.id === 'string' && inlineQuestion.id.trim()) ||
+              (typeof inlineQuestion.questionId === 'string' && inlineQuestion.questionId.trim()) ||
+              (typeof inlineQuestion.questionID === 'string' && inlineQuestion.questionID.trim()) ||
+              `inline-${index}`;
+
+            return { ...inlineQuestion, id: inlineId };
           }
 
           if (reference.type === 'id') {
             try {
               const question = await firestoreService.getOne('questions', reference.value);
-              return question;
+              return question || null;
             } catch (questionError) {
               console.error(`Failed to load question ${reference.value}:`, questionError);
               return null;
@@ -297,7 +260,9 @@ const TakeExam = () => {
         })
       );
 
-      const sanitizedQuestions = fetchedQuestions.filter((question) => question && typeof question === 'object');
+      const sanitizedQuestions = fetchedQuestions.filter(
+        (question) => question && typeof question === 'object' && (question.id || question.question)
+      );
 
       if (!sanitizedQuestions.length) {
         console.warn('No valid questions were found for this exam');
@@ -367,34 +332,28 @@ const TakeExam = () => {
       totalPoints += questionPoints;
       const userAnswer = answers[index];
 
-      if (!userAnswer) return;
+      if (userAnswer === undefined || userAnswer === null) return;
 
       const questionType = question?.type;
 
       if (questionType === 'drag-drop') {
-        // Check drag-drop answers
         const correctPairs = Array.isArray(question?.correctAnswer)
           ? question.correctAnswer
           : [];
-        const userPairs = userAnswer;
 
-        if (Array.isArray(userPairs) && Array.isArray(correctPairs)) {
-          let correctMatches = 0;
-          userPairs.forEach(userPair => {
-            const isCorrect = correctPairs.some(
-              correctPair => 
-                correctPair.item === userPair.item && 
-                correctPair.match === userPair.match
-            );
-            if (isCorrect) correctMatches++;
-          });
+        if (Array.isArray(userAnswer) && Array.isArray(correctPairs)) {
+          const correctMatches = userAnswer.filter((userPair) =>
+            correctPairs.some(
+              (correctPair) =>
+                correctPair?.item === userPair?.item && correctPair?.match === userPair?.match
+            )
+          );
 
-          if (correctPairs.length > 0 && correctMatches === correctPairs.length) {
+          if (correctPairs.length > 0 && correctMatches.length === correctPairs.length) {
             score += questionPoints;
           }
         }
       } else if (questionType === 'short-answer') {
-        // Case-insensitive comparison for short answers
         if (
           typeof userAnswer === 'string' &&
           typeof question?.correctAnswer === 'string' &&
@@ -403,12 +362,12 @@ const TakeExam = () => {
           score += questionPoints;
         }
       } else {
-        // Direct comparison for MCQ, True/False, Reading Comprehension
-        if (
-          (Array.isArray(question?.correctAnswer) &&
-            JSON.stringify(userAnswer) === JSON.stringify(question.correctAnswer)) ||
-          userAnswer === question?.correctAnswer
-        ) {
+        const correctAnswer = question?.correctAnswer;
+        if (Array.isArray(correctAnswer)) {
+          if (Array.isArray(userAnswer) && JSON.stringify(userAnswer) === JSON.stringify(correctAnswer)) {
+            score += questionPoints;
+          }
+        } else if (userAnswer === correctAnswer) {
           score += questionPoints;
         }
       }
@@ -439,52 +398,48 @@ const TakeExam = () => {
       const { score, totalPoints } = calculateScore();
       const percentage = totalPoints > 0 ? (score / totalPoints) * 100 : 0;
 
-      // Save result
       const resultData = {
         examId,
         examTitle: exam.title,
         studentId: currentUser.uid,
         studentName: userProfile.displayName,
         answers: Object.entries(answers).map(([index, answer]) => {
-          const questionIndex = parseInt(index, 10);
+          const questionIndex = Number(index);
           const questionAtIndex = questions[questionIndex] || {};
           return {
             questionIndex,
             questionId: questionAtIndex.id || null,
-            answer
+            answer,
           };
         }),
         score,
         totalPoints,
         percentage: Math.round(percentage),
         completedAt: new Date(),
-        timeTaken: (exam.duration * 60) - timeLeft
+        timeTaken: Math.max(0, (Number(exam.duration) || 0) * 60 - timeLeft),
       };
 
       await firestoreService.create('examResults', resultData);
 
-      // Update user points and level
       const pointsEarned = Math.round(score);
       const newPoints = (userProfile.points || 0) + pointsEarned;
       const newLevel = Math.floor(newPoints / 100) + 1;
 
       await updateUserProfile({
         points: newPoints,
-        level: newLevel
+        level: newLevel,
       });
 
-      // Celebration if passed
       if (percentage >= (exam.passingScore || 60)) {
         confetti({
           particleCount: 100,
           spread: 70,
-          origin: { y: 0.6 }
+          origin: { y: 0.6 },
         });
       }
 
-      // Navigate to results
-      navigate(`/student/exam-result/${examId}`, { 
-        state: { score, totalPoints, percentage, pointsEarned } 
+      navigate(`/student/exam-result/${examId}`, {
+        state: { score, totalPoints, percentage, pointsEarned },
       });
     } catch (error) {
       console.error('Error submitting exam:', error);
