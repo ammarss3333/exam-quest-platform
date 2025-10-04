@@ -53,6 +53,12 @@ const QuestionModal = ({ question, categories, onClose, onSave }) => {
     setLoading(true);
 
     try {
+      if (!currentUser) {
+        setError('You must be signed in to save questions.');
+        setLoading(false);
+        return;
+      }
+
       // Validation
       if (!formData.category || !formData.question) {
         setError('Please fill in all required fields');
