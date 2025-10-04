@@ -4,9 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import confetti from 'canvas-confetti';
-import { 
-  FaClock, FaCheckCircle, FaArrowRight, FaArrowLeft, 
-  FaFlag, FaTimes 
+import {
+  FaClock, FaCheckCircle, FaArrowRight, FaArrowLeft,
+  FaFlag
 } from 'react-icons/fa';
 import { firestoreService } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -95,12 +95,14 @@ const TakeExam = () => {
     const references = [];
     const seenIds = new Set();
     const pushId = (value) => {
-      if (typeof value === 'string') {
-        const trimmed = value.trim();
-        if (trimmed && !seenIds.has(trimmed)) {
-          references.push({ type: 'id', value: trimmed });
-          seenIds.add(trimmed);
-        }
+      if (!value) return;
+
+      const normalized = typeof value === 'string' ? value : String(value);
+      const trimmed = normalized.trim();
+
+      if (trimmed && !seenIds.has(trimmed)) {
+        references.push({ type: 'id', value: trimmed });
+        seenIds.add(trimmed);
       }
     };
 
@@ -110,44 +112,65 @@ const TakeExam = () => {
       }
     };
 
-    if (Array.isArray(rawValue)) {
-      rawValue.forEach((entry) => {
-        if (typeof entry === 'string') {
-          pushId(entry);
-        } else if (entry && typeof entry === 'object') {
-          if (typeof entry.id === 'string' && entry.id.trim()) {
-            pushId(entry.id);
-          } else if (typeof entry.questionId === 'string' && entry.questionId.trim()) {
-            pushId(entry.questionId);
+    function pushEntry(entry) {
+      if (!entry) {
+        return;
+      }
+
+      if (typeof entry === 'string' || typeof entry === 'number') {
+        pushId(entry);
+        return;
+      }
+
+      if (entry instanceof Map) {
+        entry.forEach((mapValue, key) => {
+          if (typeof mapValue === 'boolean') {
+            if (mapValue) pushId(key);
           } else {
-            pushInline(entry);
+            pushEntry(mapValue);
           }
+        });
+        return;
+      }
+
+      if (entry instanceof Set) {
+        entry.forEach(pushEntry);
+        return;
+      }
+
+      if (Array.isArray(entry)) {
+        entry.forEach(pushEntry);
+        return;
+      }
+
+      if (typeof entry === 'object') {
+        if (typeof entry.id === 'string' && entry.id.trim()) {
+          pushId(entry.id);
+          return;
         }
-      });
-      return references;
+
+        if (typeof entry.questionId === 'string' && entry.questionId.trim()) {
+          pushId(entry.questionId);
+          return;
+        }
+
+        // Firestore document references expose an id property, but double check
+        if (entry?.id && typeof entry.id === 'number') {
+          pushId(entry.id);
+          return;
+        }
+
+        pushInline(entry);
+      }
     }
 
-    if (typeof rawValue === 'object') {
-      Object.entries(rawValue).forEach(([key, entryValue]) => {
-        if (typeof entryValue === 'string') {
-          pushId(entryValue);
-        } else if (typeof entryValue === 'boolean') {
-          if (entryValue) {
-            pushId(key);
-          }
-        } else if (entryValue && typeof entryValue === 'object') {
-          if (typeof entryValue.id === 'string' && entryValue.id.trim()) {
-            pushId(entryValue.id);
-          } else if (typeof entryValue.questionId === 'string' && entryValue.questionId.trim()) {
-            pushId(entryValue.questionId);
-          } else {
-            pushInline(entryValue);
-          }
-        } else {
-          pushId(key);
-        }
-      });
-      return references;
+    function pushEntryWithFallback(entry, fallbackKey) {
+      const beforeLength = references.length;
+      pushEntry(entry);
+
+      if (fallbackKey && references.length === beforeLength) {
+        pushId(fallbackKey);
+      }
     }
 
     if (typeof rawValue === 'string') {
@@ -156,6 +179,43 @@ const TakeExam = () => {
         .map((value) => value.trim())
         .filter(Boolean)
         .forEach(pushId);
+      return references;
+    }
+
+    if (Array.isArray(rawValue)) {
+      rawValue.forEach(pushEntry);
+      return references;
+    }
+
+    if (rawValue instanceof Set) {
+      rawValue.forEach(pushEntry);
+      return references;
+    }
+
+    if (rawValue instanceof Map) {
+      rawValue.forEach((mapValue, key) => {
+        if (typeof mapValue === 'boolean') {
+          if (mapValue) pushId(key);
+        } else {
+          pushEntryWithFallback(mapValue, key);
+        }
+      });
+      return references;
+    }
+
+    if (rawValue && typeof rawValue === 'object') {
+      Object.entries(rawValue).forEach(([key, entryValue]) => {
+        if (typeof entryValue === 'boolean') {
+          if (entryValue) pushId(key);
+          return;
+        }
+
+        if (entryValue === undefined || entryValue === null) {
+          return;
+        }
+
+        pushEntryWithFallback(entryValue, key);
+      });
       return references;
     }
 
