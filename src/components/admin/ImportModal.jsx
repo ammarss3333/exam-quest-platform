@@ -45,6 +45,11 @@ const ImportModal = ({ onClose, onImport }) => {
       return;
     }
 
+    if (!currentUser) {
+      setError('You must be signed in to import questions.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     setSuccess('');

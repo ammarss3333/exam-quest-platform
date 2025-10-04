@@ -101,14 +101,29 @@ const TakeExam = () => {
       }
 
       setExam(examData);
-      setTimeLeft(examData.duration * 60); // Convert minutes to seconds
+      const durationInMinutes = Number(examData.duration) || 0;
+      setTimeLeft(durationInMinutes * 60); // Convert minutes to seconds
 
       // Load questions
-      const questionPromises = examData.questions.map(qId =>
+      const questionIdsSource = Array.isArray(examData.selectedQuestions)
+        ? examData.selectedQuestions
+        : Array.isArray(examData.questions)
+          ? examData.questions
+          : [];
+
+      const questionIds = questionIdsSource.filter(Boolean);
+
+      if (questionIds.length === 0) {
+        console.warn('Exam has no questions configured');
+      }
+
+      const questionPromises = questionIds.map((qId) =>
         firestoreService.getOne('questions', qId)
       );
       const loadedQuestions = await Promise.all(questionPromises);
-      setQuestions(loadedQuestions.filter(q => q !== null));
+      setQuestions(
+        loadedQuestions.filter((q) => q && typeof q === 'object')
+      );
     } catch (error) {
       console.error('Error loading exam:', error);
       alert('Failed to load exam');
@@ -161,14 +176,19 @@ const TakeExam = () => {
     let totalPoints = 0;
 
     questions.forEach((question, index) => {
-      totalPoints += question.points;
+      const questionPoints = Number(question?.points) || 0;
+      totalPoints += questionPoints;
       const userAnswer = answers[index];
 
       if (!userAnswer) return;
 
-      if (question.type === 'drag-drop') {
+      const questionType = question?.type;
+
+      if (questionType === 'drag-drop') {
         // Check drag-drop answers
-        const correctPairs = question.correctAnswer;
+        const correctPairs = Array.isArray(question?.correctAnswer)
+          ? question.correctAnswer
+          : [];
         const userPairs = userAnswer;
 
         if (Array.isArray(userPairs) && Array.isArray(correctPairs)) {
@@ -182,19 +202,27 @@ const TakeExam = () => {
             if (isCorrect) correctMatches++;
           });
 
-          if (correctMatches === correctPairs.length) {
-            score += question.points;
+          if (correctPairs.length > 0 && correctMatches === correctPairs.length) {
+            score += questionPoints;
           }
         }
-      } else if (question.type === 'short-answer') {
+      } else if (questionType === 'short-answer') {
         // Case-insensitive comparison for short answers
-        if (userAnswer.toLowerCase().trim() === question.correctAnswer.toLowerCase().trim()) {
-          score += question.points;
+        if (
+          typeof userAnswer === 'string' &&
+          typeof question?.correctAnswer === 'string' &&
+          userAnswer.toLowerCase().trim() === question.correctAnswer.toLowerCase().trim()
+        ) {
+          score += questionPoints;
         }
       } else {
         // Direct comparison for MCQ, True/False, Reading Comprehension
-        if (userAnswer === question.correctAnswer) {
-          score += question.points;
+        if (
+          (Array.isArray(question?.correctAnswer) &&
+            JSON.stringify(userAnswer) === JSON.stringify(question.correctAnswer)) ||
+          userAnswer === question?.correctAnswer
+        ) {
+          score += questionPoints;
         }
       }
     });
@@ -215,8 +243,14 @@ const TakeExam = () => {
     setSubmitting(true);
 
     try {
+      if (!currentUser || !userProfile) {
+        alert('You must be signed in to submit the exam.');
+        setSubmitting(false);
+        return;
+      }
+
       const { score, totalPoints } = calculateScore();
-      const percentage = (score / totalPoints) * 100;
+      const percentage = totalPoints > 0 ? (score / totalPoints) * 100 : 0;
 
       // Save result
       const resultData = {
@@ -224,11 +258,15 @@ const TakeExam = () => {
         examTitle: exam.title,
         studentId: currentUser.uid,
         studentName: userProfile.displayName,
-        answers: Object.entries(answers).map(([index, answer]) => ({
-          questionIndex: parseInt(index),
-          questionId: questions[parseInt(index)].id,
-          answer
-        })),
+        answers: Object.entries(answers).map(([index, answer]) => {
+          const questionIndex = parseInt(index, 10);
+          const questionAtIndex = questions[questionIndex] || {};
+          return {
+            questionIndex,
+            questionId: questionAtIndex.id || null,
+            answer
+          };
+        }),
         score,
         totalPoints,
         percentage: Math.round(percentage),
@@ -285,8 +323,41 @@ const TakeExam = () => {
     );
   }
 
-  const currentQuestion = questions[currentQuestionIndex];
-  const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+  if (!exam) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="card text-center">
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">
+            Exam unavailable
+          </h2>
+          <p className="text-gray-600">
+            We couldn't load this exam right now. Please try again later.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (questions.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="card text-center">
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">
+            No questions available
+          </h2>
+          <p className="text-gray-600">
+            This exam doesn't have any questions yet. Please contact your instructor.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const currentQuestion = questions[currentQuestionIndex] ?? {};
+  const currentQuestionType = currentQuestion.type || 'mcq';
+  const progress = questions.length
+    ? ((currentQuestionIndex + 1) / questions.length) * 100
+    : 0;
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -332,18 +403,18 @@ const TakeExam = () => {
             {/* Question Header */}
             <div className="flex items-center gap-3 mb-4">
               <span className="badge bg-purple-100 text-purple-800">
-                {currentQuestion.type.replace('-', ' ')}
+                {currentQuestionType.replace('-', ' ')}
               </span>
               <span className="badge bg-blue-100 text-blue-800">
-                {currentQuestion.category}
+                {currentQuestion.category || 'General'}
               </span>
               <span className="badge bg-yellow-100 text-yellow-800">
-                {currentQuestion.points} points
+                {(currentQuestion.points ?? 0)} points
               </span>
             </div>
 
             {/* Reading Passage */}
-            {currentQuestion.type === 'reading-comprehension' && currentQuestion.passage && (
+            {currentQuestionType === 'reading-comprehension' && currentQuestion.passage && (
               <div className="bg-amber-50 border-l-4 border-amber-500 p-6 rounded-lg mb-6">
                 <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                   📖 Reading Passage
@@ -356,7 +427,7 @@ const TakeExam = () => {
 
             {/* Question Text */}
             <h2 className="text-xl font-semibold text-gray-800 mb-4">
-              {currentQuestion.question}
+              {currentQuestion.question || 'This question is unavailable.'}
             </h2>
 
             {/* Question Image */}
@@ -373,9 +444,9 @@ const TakeExam = () => {
             {/* Answer Options */}
             <div className="space-y-4 mt-6">
               {/* MCQ and Reading Comprehension */}
-              {(currentQuestion.type === 'mcq' || currentQuestion.type === 'reading-comprehension') && (
+              {(currentQuestionType === 'mcq' || currentQuestionType === 'reading-comprehension') && (
                 <div className="space-y-3">
-                  {currentQuestion.options.map((option, index) => (
+                  {(Array.isArray(currentQuestion.options) ? currentQuestion.options : []).map((option, index) => (
                     <motion.button
                       key={index}
                       whileHover={{ scale: 1.02 }}
@@ -405,7 +476,7 @@ const TakeExam = () => {
               )}
 
               {/* True/False */}
-              {currentQuestion.type === 'true-false' && (
+              {currentQuestionType === 'true-false' && (
                 <div className="grid grid-cols-2 gap-4">
                   {['true', 'false'].map((option) => (
                     <motion.button
@@ -426,7 +497,7 @@ const TakeExam = () => {
               )}
 
               {/* Short Answer */}
-              {currentQuestion.type === 'short-answer' && (
+              {currentQuestionType === 'short-answer' && (
                 <input
                   type="text"
                   value={answers[currentQuestionIndex] || ''}
@@ -437,12 +508,12 @@ const TakeExam = () => {
               )}
 
               {/* Drag and Drop */}
-              {currentQuestion.type === 'drag-drop' && (
+              {currentQuestionType === 'drag-drop' && Array.isArray(currentQuestion.correctAnswer) && (
                 <div className="space-y-6">
                   <div>
                     <h3 className="font-semibold text-gray-700 mb-3">Drag items:</h3>
                     <div className="grid grid-cols-2 gap-3">
-                      {currentQuestion.options.map((item, index) => (
+                      {(Array.isArray(currentQuestion.options) ? currentQuestion.options : []).map((item, index) => (
                         <DraggableItem key={index} item={item} index={index} />
                       ))}
                     </div>
@@ -451,14 +522,18 @@ const TakeExam = () => {
                   <div>
                     <h3 className="font-semibold text-gray-700 mb-3">Drop to match:</h3>
                     <div className="space-y-3">
-                      {currentQuestion.correctAnswer.map((pair, index) => (
-                        <DropZone
-                          key={index}
-                          match={pair.match}
-                          onDrop={handleDragDrop}
-                          droppedItem={dragDropAnswers[currentQuestionIndex]?.[pair.match]}
-                        />
-                      ))}
+                      {currentQuestion.correctAnswer.map((pair, index) => {
+                        const matchLabel =
+                          pair && typeof pair === 'object' ? pair.match : `Match ${index + 1}`;
+                        return (
+                          <DropZone
+                            key={index}
+                            match={matchLabel}
+                            onDrop={handleDragDrop}
+                            droppedItem={dragDropAnswers[currentQuestionIndex]?.[matchLabel]}
+                          />
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
