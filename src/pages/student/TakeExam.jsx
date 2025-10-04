@@ -89,6 +89,77 @@ const TakeExam = () => {
     }
   }, [timeLeft]);
 
+  const parseQuestionReferences = (rawValue) => {
+    if (!rawValue) return [];
+
+    const references = [];
+    const pushId = (value) => {
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (trimmed) {
+          references.push({ type: 'id', value: trimmed });
+        }
+      }
+    };
+
+    const pushInline = (value) => {
+      if (value && typeof value === 'object') {
+        references.push({ type: 'inline', value });
+      }
+    };
+
+    if (Array.isArray(rawValue)) {
+      rawValue.forEach((entry) => {
+        if (typeof entry === 'string') {
+          pushId(entry);
+        } else if (entry && typeof entry === 'object') {
+          if (typeof entry.id === 'string' && entry.id.trim()) {
+            pushId(entry.id);
+          } else if (typeof entry.questionId === 'string' && entry.questionId.trim()) {
+            pushId(entry.questionId);
+          } else {
+            pushInline(entry);
+          }
+        }
+      });
+      return references;
+    }
+
+    if (typeof rawValue === 'object') {
+      Object.entries(rawValue).forEach(([key, entryValue]) => {
+        if (typeof entryValue === 'string') {
+          pushId(entryValue);
+        } else if (typeof entryValue === 'boolean') {
+          if (entryValue) {
+            pushId(key);
+          }
+        } else if (entryValue && typeof entryValue === 'object') {
+          if (typeof entryValue.id === 'string' && entryValue.id.trim()) {
+            pushId(entryValue.id);
+          } else if (typeof entryValue.questionId === 'string' && entryValue.questionId.trim()) {
+            pushId(entryValue.questionId);
+          } else {
+            pushInline(entryValue);
+          }
+        } else {
+          pushId(key);
+        }
+      });
+      return references;
+    }
+
+    if (typeof rawValue === 'string') {
+      rawValue
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean)
+        .forEach(pushId);
+      return references;
+    }
+
+    return references;
+  };
+
   const loadExam = async () => {
     try {
       setLoading(true);
@@ -105,25 +176,58 @@ const TakeExam = () => {
       setTimeLeft(durationInMinutes * 60); // Convert minutes to seconds
 
       // Load questions
-      const questionIdsSource = Array.isArray(examData.selectedQuestions)
-        ? examData.selectedQuestions
-        : Array.isArray(examData.questions)
-          ? examData.questions
-          : [];
+      const preferredRefs = parseQuestionReferences(examData.selectedQuestions);
+      const fallbackRefs = preferredRefs.length
+        ? preferredRefs
+        : parseQuestionReferences(examData.questions);
 
-      const questionIds = questionIdsSource.filter(Boolean);
-
-      if (questionIds.length === 0) {
+      if (!fallbackRefs.length) {
         console.warn('Exam has no questions configured');
+        setQuestions([]);
+        setCurrentQuestionIndex(0);
+        return;
       }
 
-      const questionPromises = questionIds.map((qId) =>
-        firestoreService.getOne('questions', qId)
+      const fetchedQuestions = await Promise.all(
+        fallbackRefs.map(async (reference, index) => {
+          if (reference.type === 'inline') {
+            const inlineQuestion = reference.value;
+            if (inlineQuestion && typeof inlineQuestion === 'object') {
+              return {
+                ...inlineQuestion,
+                id:
+                  typeof inlineQuestion.id === 'string' && inlineQuestion.id.trim()
+                    ? inlineQuestion.id.trim()
+                    : typeof inlineQuestion.questionId === 'string' && inlineQuestion.questionId.trim()
+                      ? inlineQuestion.questionId.trim()
+                      : `inline-${index}`,
+              };
+            }
+            return null;
+          }
+
+          if (reference.type === 'id') {
+            try {
+              const question = await firestoreService.getOne('questions', reference.value);
+              return question;
+            } catch (questionError) {
+              console.error(`Failed to load question ${reference.value}:`, questionError);
+              return null;
+            }
+          }
+
+          return null;
+        })
       );
-      const loadedQuestions = await Promise.all(questionPromises);
-      setQuestions(
-        loadedQuestions.filter((q) => q && typeof q === 'object')
-      );
+
+      const sanitizedQuestions = fetchedQuestions.filter((question) => question && typeof question === 'object');
+
+      if (!sanitizedQuestions.length) {
+        console.warn('No valid questions were found for this exam');
+      }
+
+      setQuestions(sanitizedQuestions);
+      setCurrentQuestionIndex(0);
     } catch (error) {
       console.error('Error loading exam:', error);
       alert('Failed to load exam');
@@ -134,29 +238,35 @@ const TakeExam = () => {
   };
 
   const handleAnswer = (answer) => {
-    setAnswers({
-      ...answers,
-      [currentQuestionIndex]: answer
-    });
+    setAnswers((prevAnswers) => ({
+      ...prevAnswers,
+      [currentQuestionIndex]: answer,
+    }));
   };
 
   const handleDragDrop = (item, match) => {
-    const currentAnswers = dragDropAnswers[currentQuestionIndex] || {};
-    setDragDropAnswers({
-      ...dragDropAnswers,
-      [currentQuestionIndex]: {
+    setDragDropAnswers((prevAnswers) => {
+      const currentAnswers = prevAnswers[currentQuestionIndex] || {};
+      const updatedForQuestion = {
         ...currentAnswers,
-        [match]: item
-      }
-    });
+        [match]: item,
+      };
 
-    // Convert to array format for final answer
-    const pairs = Object.entries({
-      ...currentAnswers,
-      [match]: item
-    }).map(([match, item]) => ({ item, match }));
-    
-    handleAnswer(pairs);
+      const updatedPairs = Object.entries(updatedForQuestion).map(([pairMatch, pairItem]) => ({
+        item: pairItem,
+        match: pairMatch,
+      }));
+
+      setAnswers((prev) => ({
+        ...prev,
+        [currentQuestionIndex]: updatedPairs,
+      }));
+
+      return {
+        ...prevAnswers,
+        [currentQuestionIndex]: updatedForQuestion,
+      };
+    });
   };
 
   const handleNext = () => {
