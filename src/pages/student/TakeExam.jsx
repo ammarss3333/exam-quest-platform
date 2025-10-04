@@ -107,9 +107,17 @@ const TakeExam = () => {
     };
 
     const pushInline = (value) => {
-      if (value && typeof value === 'object') {
-        references.push({ type: 'inline', value });
+      if (!value || typeof value !== 'object') {
+        return;
       }
+
+      // Some legacy structures wrap the question object in a { question: {...} } container.
+      if (value.question && typeof value.question === 'object') {
+        references.push({ type: 'inline', value: value.question });
+        return;
+      }
+
+      references.push({ type: 'inline', value });
     };
 
     function pushEntry(entry) {
@@ -151,6 +159,11 @@ const TakeExam = () => {
 
         if (typeof entry.questionId === 'string' && entry.questionId.trim()) {
           pushId(entry.questionId);
+          return;
+        }
+
+        if (typeof entry.questionID === 'string' && entry.questionID.trim()) {
+          pushId(entry.questionID);
           return;
         }
 
