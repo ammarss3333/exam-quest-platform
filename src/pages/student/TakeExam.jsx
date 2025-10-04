@@ -1,12 +1,13 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import confetti from 'canvas-confetti';
-import { 
-  FaClock, FaCheckCircle, FaArrowRight, FaArrowLeft, 
-  FaFlag, FaTimes 
+import {
+  FaClock, FaCheckCircle, FaArrowRight, FaArrowLeft,
+  FaFlag, FaTimes
 } from 'react-icons/fa';
 import { firestoreService } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -66,7 +67,7 @@ const TakeExam = () => {
   const { examId } = useParams();
   const navigate = useNavigate();
   const { currentUser, userProfile, updateUserProfile } = useAuth();
-  
+
   const [exam, setExam] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -87,13 +88,13 @@ const TakeExam = () => {
     } else if (timeLeft === 0 && exam) {
       handleSubmit();
     }
-  }, [timeLeft]);
+  }, [timeLeft, exam]); // Added exam to dependency array
 
   const loadExam = async () => {
     try {
       setLoading(true);
       const examData = await firestoreService.getOne('exams', examId);
-      
+
       if (!examData) {
         alert('Exam not found');
         navigate('/student/exams');
@@ -105,12 +106,15 @@ const TakeExam = () => {
       setTimeLeft(durationInMinutes * 60); // Convert minutes to seconds
 
       // Load questions
-      const questionIds = (examData && examData.questions && Array.isArray(examData.questions))
+      const questionIds = examData.questions && Array.isArray(examData.questions)
         ? examData.questions
         : [];
 
       if (questionIds.length === 0) {
         console.warn('Exam has no questions configured');
+        setQuestions([]); // Ensure questions state is an empty array
+        setLoading(false);
+        return;
       }
 
       const questionPromises = questionIds.map((qId) =>
@@ -151,7 +155,7 @@ const TakeExam = () => {
       ...currentAnswers,
       [match]: item
     }).map(([match, item]) => ({ item, match }));
-    
+
     handleAnswer(pairs);
   };
 
@@ -191,8 +195,8 @@ const TakeExam = () => {
           let correctMatches = 0;
           userPairs.forEach(userPair => {
             const isCorrect = correctPairs.some(
-              correctPair => 
-                correctPair.item === userPair.item && 
+              correctPair =>
+                correctPair.item === userPair.item &&
                 correctPair.match === userPair.match
             );
             if (isCorrect) correctMatches++;
@@ -292,8 +296,8 @@ const TakeExam = () => {
       }
 
       // Navigate to results
-      navigate(`/student/exam-result/${examId}`, { 
-        state: { score, totalPoints, percentage, pointsEarned } 
+      navigate(`/student/exam-result/${examId}`, {
+        state: { score, totalPoints, percentage, pointsEarned }
       });
     } catch (error) {
       console.error('Error submitting exam:', error);
@@ -429,9 +433,9 @@ const TakeExam = () => {
             {/* Question Image */}
             {currentQuestion.imageUrl && (
               <div className="mb-6">
-                <img 
-                  src={currentQuestion.imageUrl} 
-                  alt="Question" 
+                <img
+                  src={currentQuestion.imageUrl}
+                  alt="Question"
                   className="w-full max-h-96 object-contain rounded-lg border-2 border-gray-200"
                 />
               </div>
@@ -499,97 +503,73 @@ const TakeExam = () => {
                   value={answers[currentQuestionIndex] || ''}
                   onChange={(e) => handleAnswer(e.target.value)}
                   placeholder="Type your answer here..."
-                  className="input-field text-lg"
+                  className="w-full p-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-purple-500 transition-all"
                 />
               )}
 
               {/* Drag and Drop */}
-              {currentQuestionType === 'drag-drop' && Array.isArray(currentQuestion.correctAnswer) && (
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="font-semibold text-gray-700 mb-3">Drag items:</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      {(Array.isArray(currentQuestion.options) ? currentQuestion.options : []).map((item, index) => (
-                        <DraggableItem key={index} item={item} index={index} />
-                      ))}
-                    </div>
+              {currentQuestionType === 'drag-drop' && (
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-gray-700">Items</h3>
+                    {(Array.isArray(currentQuestion.items) ? currentQuestion.items : []).map((item, idx) => (
+                      <DraggableItem key={idx} item={item} index={idx} />
+                    ))}
                   </div>
-
-                  <div>
-                    <h3 className="font-semibold text-gray-700 mb-3">Drop to match:</h3>
-                    <div className="space-y-3">
-                      {currentQuestion.correctAnswer.map((pair, index) => {
-                        const matchLabel =
-                          pair && typeof pair === 'object' ? pair.match : `Match ${index + 1}`;
-                        return (
-                          <DropZone
-                            key={index}
-                            match={matchLabel}
-                            onDrop={handleDragDrop}
-                            droppedItem={dragDropAnswers[currentQuestionIndex]?.[matchLabel]}
-                          />
-                        );
-                      })}
-                    </div>
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-gray-700">Matches</h3>
+                    {(Array.isArray(currentQuestion.matches) ? currentQuestion.matches : []).map((match, idx) => (
+                      <DropZone
+                        key={idx}
+                        match={match}
+                        onDrop={handleDragDrop}
+                        droppedItem={Object.values(dragDropAnswers[currentQuestionIndex] || {}).find(val => val.match === match)?.item}
+                      />
+                    ))}
                   </div>
                 </div>
               )}
             </div>
+
+            {/* Navigation Buttons */}
+            <div className="flex justify-between mt-8">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handlePrevious}
+                disabled={currentQuestionIndex === 0 || submitting}
+                className="btn btn-secondary"
+              >
+                <FaArrowLeft className="inline-block mr-2" /> Previous
+              </motion.button>
+              {currentQuestionIndex < questions.length - 1 ? (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleNext}
+                  disabled={submitting}
+                  className="btn btn-primary"
+                >
+                  Next <FaArrowRight className="inline-block ml-2" />
+                </motion.button>
+              ) : (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="btn btn-success"
+                >
+                  {submitting ? 'Submitting...' : 'Submit Exam'}
+                </motion.button>
+              )}
+            </div>
           </motion.div>
         </AnimatePresence>
-
-        {/* Navigation */}
-        <div className="flex items-center justify-between mt-6">
-          <button
-            onClick={handlePrevious}
-            disabled={currentQuestionIndex === 0}
-            className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <FaArrowLeft className="mr-2" />
-            Previous
-          </button>
-
-          {currentQuestionIndex === questions.length - 1 ? (
-            <button
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="btn-primary"
-            >
-              {submitting ? 'Submitting...' : 'Submit Exam'}
-              <FaFlag className="ml-2" />
-            </button>
-          ) : (
-            <button onClick={handleNext} className="btn-primary">
-              Next
-              <FaArrowRight className="ml-2" />
-            </button>
-          )}
-        </div>
-
-        {/* Question Navigator */}
-        <div className="card mt-6">
-          <h3 className="font-semibold text-gray-700 mb-3">Question Navigator</h3>
-          <div className="grid grid-cols-10 gap-2">
-            {questions.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentQuestionIndex(index)}
-                className={`aspect-square rounded-lg font-semibold transition-all ${
-                  index === currentQuestionIndex
-                    ? 'bg-purple-600 text-white'
-                    : answers[index]
-                    ? 'bg-green-500 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                {index + 1}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
     </DndProvider>
   );
 };
 
 export default TakeExam;
+
