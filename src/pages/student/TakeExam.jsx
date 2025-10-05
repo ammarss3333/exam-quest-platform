@@ -107,7 +107,7 @@ const TakeExam = () => {
       setTimeLeft(durationInMinutes * 60); // Convert minutes to seconds
 
       // Load questions
-      const questionIds = Array.isArray(examData.questions) ? examData.questions : [];
+      const questionIds = Array.isArray(examData.selectedQuestions) ? examData.selectedQuestions : [];
       console.log("Question IDs from examData:", questionIds);
 
       if (questionIds.length === 0) {
