@@ -24,11 +24,16 @@ export const AuthProvider = ({ children }) => {
       
       if (user) {
         // Get or create user profile
+        if (!user.uid) {
+          console.warn('User object is missing UID after authentication.');
+          setLoading(false);
+          return;
+        }
         const userRef = doc(db, 'users', user.uid);
         const userSnap = await getDoc(userRef);
         
         if (userSnap.exists()) {
-          setUserProfile(userSnap.data());
+          setUserProfile(userSnap.data() || {});
         } else {
           // Create new user profile
           const newProfile = {
@@ -44,7 +49,7 @@ export const AuthProvider = ({ children }) => {
             createdAt: new Date()
           };
           await setDoc(userRef, newProfile);
-          setUserProfile(newProfile);
+          setUserProfile(newProfile || {});
         }
       } else {
         setUserProfile(null);
