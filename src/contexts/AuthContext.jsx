@@ -19,56 +19,83 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      
-      if (user && user.uid) {
-        // Get or create user profile
-        if (!user.uid) {
-          console.warn('User object is missing UID after authentication.');
-          setLoading(false);
-          return;
+    const handleRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          // User successfully signed in via redirect
+          const user = result.user;
+          setCurrentUser(user);
+          if (user && user.uid) {
+            const userRef = doc(db, 'users', user.uid);
+            const userSnap = await getDoc(userRef);
+            if (userSnap.exists()) {
+              setUserProfile(userSnap.data() || {});
+            } else {
+              const newProfile = {
+                uid: user.uid,
+                email: user.email,
+                displayName: user.displayName,
+                photoURL: user.photoURL,
+                role: 'student',
+                points: 0,
+                level: 1,
+                badges: [],
+                streak: 0,
+                createdAt: new Date()
+              };
+              await setDoc(userRef, newProfile);
+              setUserProfile(newProfile || {});
+            }
+          }
         }
-        const userRef = doc(db, 'users', user.uid);
-        const userSnap = await getDoc(userRef);
-        
-        if (userSnap.exists()) {
-          setUserProfile(userSnap.data() || {});
-        } else {
-          // Create new user profile
-          const newProfile = {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            photoURL: user.photoURL,
-            role: 'student', // Default role
-            points: 0,
-            level: 1,
-            badges: [],
-            streak: 0,
-            createdAt: new Date()
-          };
-          await setDoc(userRef, newProfile);
-          setUserProfile(newProfile || {});
+      } catch (error) {
+        console.error("Error handling redirect result:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setCurrentUser(user);
+        if (user.uid) {
+          const userRef = doc(db, 'users', user.uid);
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            setUserProfile(userSnap.data() || {});
+          } else {
+            const newProfile = {
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName,
+              photoURL: user.photoURL,
+              role: 'student',
+              points: 0,
+              level: 1,
+              badges: [],
+              streak: 0,
+              createdAt: new Date()
+            };
+            await setDoc(userRef, newProfile);
+            setUserProfile(newProfile || {});
+          }
         }
       } else {
+        setCurrentUser(null);
         setUserProfile(null);
+        setLoading(false);
       }
-      
-      setLoading(false);
     });
+
+    handleRedirectResult(); // Call this when component mounts to check for redirect results
 
     return unsubscribe;
   }, []);
 
   const signIn = async () => {
     try {
-      const authenticatedUser = await signInWithGoogle();
-      if (authenticatedUser) {
-        setCurrentUser(authenticatedUser);
-      } else {
-        console.error("Sign-in failed: No user returned from Google.");
-      }
+      await signInWithGoogle();
     } catch (error) {
       console.error('Sign in error:', error);
       throw error;
