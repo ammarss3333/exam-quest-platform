@@ -16,7 +16,7 @@ const DraggableItem = ({ item, index, onDragStart }) => {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'ITEM',
     item: { item, index },
-
+    begin: () => ({ item, index }),
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
