@@ -5,12 +5,12 @@ import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'fire
 
 // Firebase configuration - Users need to replace with their own config
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+  apiKey: "AIzaSyChJs8Aq94DTlDTDtvJ9J1GMKfOdWAUi9o",
+  authDomain: "learning-4a908.firebaseapp.com",
+  projectId: "learning-4a908",
+  storageBucket: "learning-4a908.firebasestorage.app",
+  messagingSenderId: "271123284801",
+  appId: "1:271123284801:web:bac86cbf92453d0eb617c0"
 };
 
 // Initialize Firebase
