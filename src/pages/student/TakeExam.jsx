@@ -345,9 +345,10 @@ const TakeExam = () => {
           <h2 className="text-xl font-semibold text-gray-800 mb-2">
             No questions available
           </h2>
-          <p className="text-gray-600">
-            This exam doesn't have any questions yet. Please contact your instructor.
+          <p className="text-gray-600">            This exam doesn\'t have any questions yet. Please contact your instructor.
           </p>
+          <p className="text-gray-600">Debug Info: Exam Data: {JSON.stringify(exam)}</p>
+          <p className="text-gray-600">Debug Info: Question IDs: {JSON.stringify(questionIds)}</p>
         </div>
       </div>
     );
