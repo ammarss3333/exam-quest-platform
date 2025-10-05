@@ -102,28 +102,24 @@ const TakeExam = () => {
       }
 
       setExam(examData);
-      console.log('Fetched examData:', examData);
       const durationInMinutes = Number(examData.duration) || 0;
       setTimeLeft(durationInMinutes * 60); // Convert minutes to seconds
 
       // Load questions
       const questionIds = Array.isArray(examData.selectedQuestions) ? examData.selectedQuestions : [];
-      console.log('Extracted questionIds:', questionIds);
 
       if (questionIds.length === 0) {
-        console.warn('Exam has no questions configured');
         setQuestions([]); // Ensure questions state is an empty array
         setLoading(false);
         return;
       }
 
       const questionPromises = questionIds.map((qId) =>
-        firestoreService.getOne('questions', qId)
+        firestoreService.getOne("questions", qId)
       );
       const loadedQuestions = await Promise.all(questionPromises);
-      console.log("Loaded questions:", loadedQuestions);
       setQuestions(
-        loadedQuestions.filter((q) => q && typeof q === 'object').map(q => ({ ...q, type: q.type || 'mcq' }))
+        loadedQuestions.filter((q) => q && typeof q === "object").map(q => ({ ...q, type: q.type || "mcq" }))
       );
     } catch (error) {
       console.error('Error loading exam:', error);
