@@ -19,6 +19,9 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({
+  'redirect_uri': 'https://ammarss3333.github.io/exam-quest-platform/'
+});
 export { getRedirectResult };
 
 // Auth functions
