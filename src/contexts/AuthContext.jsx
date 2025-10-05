@@ -63,7 +63,11 @@ export const AuthProvider = ({ children }) => {
 
   const signIn = async () => {
     try {
-      await signInWithGoogle();
+      const user = await signInWithGoogle();
+      if (!user) {
+        console.error("Sign-in failed: No user returned.");
+        return;
+      }
     } catch (error) {
       console.error('Sign in error:', error);
       throw error;
@@ -80,7 +84,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateUserProfile = async (updates) => {
-    if (currentUser) {
+    if (currentUser && currentUser.uid) {
       const userRef = doc(db, 'users', currentUser.uid);
       await setDoc(userRef, updates, { merge: true });
       setUserProfile(prev => ({ ...prev, ...updates }));

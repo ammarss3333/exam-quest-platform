@@ -24,7 +24,12 @@ export const googleProvider = new GoogleAuthProvider();
 export const signInWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
-    return result.user;
+    if (result && result.user) {
+      return result.user;
+    } else {
+      console.error("Google sign-in did not return a user.");
+      return null;
+    }
   } catch (error) {
     console.error('Error signing in with Google:', error);
     throw error;
