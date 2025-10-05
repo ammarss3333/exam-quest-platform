@@ -520,7 +520,7 @@ const TakeExam = () => {
                         key={idx}
                         match={match}
                         onDrop={handleDragDrop}
-                        droppedItem={Object.values(dragDropAnswers[currentQuestionIndex] || {}).find(val => val.match === match)?.item}
+                        droppedItem={(dragDropAnswers[currentQuestionIndex] || {})[match]}
                       />
                     ))}
                   </div>
