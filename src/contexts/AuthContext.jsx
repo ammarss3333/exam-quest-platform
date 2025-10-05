@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { auth, signInWithGoogle, logOut, db } from '../services/firebase';
-import { getRedirectResult, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -20,44 +20,6 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const handleRedirectResult = async () => {
-      await setPersistence(auth, browserLocalPersistence);
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          // User successfully signed in via redirect
-          const user = result.user;
-          setCurrentUser(user);
-          if (user && user.uid) {
-            const userRef = doc(db, 'users', user.uid);
-            const userSnap = await getDoc(userRef);
-            if (userSnap.exists()) {
-              setUserProfile(userSnap.data() || {});
-            } else {
-              const newProfile = {
-                uid: user.uid,
-                email: user.email,
-                displayName: user.displayName,
-                photoURL: user.photoURL,
-                role: 'student',
-                points: 0,
-                level: 1,
-                badges: [],
-                streak: 0,
-                createdAt: new Date()
-              };
-              await setDoc(userRef, newProfile);
-              setUserProfile(newProfile || {});
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error handling redirect result:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setCurrentUser(user);
@@ -90,7 +52,7 @@ export const AuthProvider = ({ children }) => {
       }
     });
 
-    handleRedirectResult(); // Call this when component mounts to check for redirect results
+    setPersistence(auth, browserLocalPersistence);
 
     return unsubscribe;
   }, []);
