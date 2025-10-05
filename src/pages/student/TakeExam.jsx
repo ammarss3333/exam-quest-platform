@@ -120,7 +120,7 @@ const TakeExam = () => {
       );
       const loadedQuestions = await Promise.all(questionPromises);
       setQuestions(
-        loadedQuestions.filter((q) => q && typeof q === 'object')
+        loadedQuestions.filter((q) => q && typeof q === 'object').map(q => ({ ...q, type: q.type || 'mcq' }))
       );
     } catch (error) {
       console.error('Error loading exam:', error);
@@ -351,7 +351,7 @@ const TakeExam = () => {
     );
   }
 
-  const currentQuestion = questions[currentQuestionIndex] ?? {};
+  const currentQuestion = questions[currentQuestionIndex] || {};
   const currentQuestionType = currentQuestion.type || 'mcq';
   const progress = questions.length
     ? ((currentQuestionIndex + 1) / questions.length) * 100
@@ -442,7 +442,7 @@ const TakeExam = () => {
             {/* Answer Options */}
             <div className="space-y-4 mt-6">
               {/* MCQ and Reading Comprehension */}
-              {(currentQuestionType === 'mcq' || currentQuestionType === 'reading-comprehension') && (
+              {(currentQuestionType === 'mcq' || currentQuestionType === 'reading-comprehension') && currentQuestion && (
                 <div className="space-y-3">
                   {(Array.isArray(currentQuestion.options) ? currentQuestion.options : []).map((option, index) => (
                     <motion.button
