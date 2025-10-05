@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { auth, signInWithGoogle, logOut, db, getRedirectResult } from '../services/firebase';
+import { auth, signInWithGoogle, logOut, db } from '../services/firebase';
+import { getRedirectResult } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
