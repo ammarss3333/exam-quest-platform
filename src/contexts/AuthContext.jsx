@@ -22,7 +22,7 @@ export const AuthProvider = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       
-      if (user) {
+      if (user && user.uid) {
         // Get or create user profile
         if (!user.uid) {
           console.warn('User object is missing UID after authentication.');
@@ -63,10 +63,11 @@ export const AuthProvider = ({ children }) => {
 
   const signIn = async () => {
     try {
-      const user = await signInWithGoogle();
-      if (!user) {
-        console.error("Sign-in failed: No user returned.");
-        return;
+      const authenticatedUser = await signInWithGoogle();
+      if (authenticatedUser) {
+        setCurrentUser(authenticatedUser);
+      } else {
+        console.error("Sign-in failed: No user returned from Google.");
       }
     } catch (error) {
       console.error('Sign in error:', error);

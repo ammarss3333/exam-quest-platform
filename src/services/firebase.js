@@ -27,7 +27,7 @@ export const signInWithGoogle = async () => {
     if (result && result.user) {
       return result.user;
     } else {
-      console.error("Google sign-in did not return a user.");
+      console.warn("Google sign-in did not return a user.");
       return null;
     }
   } catch (error) {
