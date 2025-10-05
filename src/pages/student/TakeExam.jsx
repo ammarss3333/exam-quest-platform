@@ -106,9 +106,7 @@ const TakeExam = () => {
       setTimeLeft(durationInMinutes * 60); // Convert minutes to seconds
 
       // Load questions
-      const questionIds = examData.questions && Array.isArray(examData.questions)
-        ? examData.questions
-        : [];
+      const questionIds = Array.isArray(examData.questions) ? examData.questions : [];
 
       if (questionIds.length === 0) {
         console.warn('Exam has no questions configured');
