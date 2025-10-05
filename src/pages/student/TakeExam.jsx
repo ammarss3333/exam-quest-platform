@@ -142,22 +142,30 @@ const TakeExam = () => {
   };
 
   const handleDragDrop = (item, match) => {
-    const currentAnswers = dragDropAnswers[currentQuestionIndex] || {};
-    setDragDropAnswers({
-      ...dragDropAnswers,
-      [currentQuestionIndex]: {
-        ...currentAnswers,
-        [match]: item
+    setDragDropAnswers(prevAnswers => {
+      const newCurrentQuestionAnswers = { ...prevAnswers[currentQuestionIndex] };
+
+      // Remove the item if it was previously dropped into another match
+      for (const key in newCurrentQuestionAnswers) {
+        if (newCurrentQuestionAnswers[key] === item) {
+          delete newCurrentQuestionAnswers[key];
+        }
       }
+
+      // Add the new item-match pair
+      newCurrentQuestionAnswers[match] = item;
+
+      const updatedDragDropAnswers = {
+        ...prevAnswers,
+        [currentQuestionIndex]: newCurrentQuestionAnswers
+      };
+
+      // Convert to array format for final answer
+      const pairs = Object.entries(newCurrentQuestionAnswers).map(([match, item]) => ({ item, match }));
+      handleAnswer(pairs);
+
+      return updatedDragDropAnswers;
     });
-
-    // Convert to array format for final answer
-    const pairs = Object.entries({
-      ...currentAnswers,
-      [match]: item
-    }).map(([match, item]) => ({ item, match }));
-
-    handleAnswer(pairs);
   };
 
   const handleNext = () => {
