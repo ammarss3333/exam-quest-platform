@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { auth, signInWithGoogle, logOut, db } from '../services/firebase';
-import { getRedirectResult } from 'firebase/auth';
+import { getRedirectResult, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -21,6 +21,7 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const handleRedirectResult = async () => {
+      await setPersistence(auth, browserLocalPersistence);
       try {
         const result = await getRedirectResult(auth);
         if (result) {
