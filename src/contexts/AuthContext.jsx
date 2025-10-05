@@ -43,6 +43,7 @@ export const AuthProvider = ({ children }) => {
           await setDoc(userRef, newProfile);
           setUserProfile(newProfile || {});
         }
+        setLoading(false); // Set loading to false after user and profile are loaded
       } else {
         setCurrentUser(null);
         setUserProfile(null);
