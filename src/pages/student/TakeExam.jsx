@@ -12,10 +12,11 @@ import {
 import { firestoreService } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 
-const DraggableItem = ({ item, index }) => {
+const DraggableItem = ({ item, index, onDragStart }) => {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'ITEM',
     item: { item, index },
+
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
@@ -37,6 +38,7 @@ const DropZone = ({ match, onDrop, droppedItem }) => {
   const [{ isOver }, drop] = useDrop(() => ({
     accept: 'ITEM',
     drop: (item) => onDrop(item.item, match),
+
     collect: (monitor) => ({
       isOver: !!monitor.isOver(),
     }),
@@ -510,7 +512,7 @@ const TakeExam = () => {
                   <div className="space-y-4">
                     <h3 className="font-semibold text-gray-700">Items</h3>
                     {(Array.isArray(currentQuestion.items) ? currentQuestion.items : []).map((item, idx) => (
-                      <DraggableItem key={idx} item={item} index={idx} />
+                      <DraggableItem key={idx} item={item} index={idx} onDragStart={() => {}} />
                     ))}
                   </div>
                   <div className="space-y-4">
