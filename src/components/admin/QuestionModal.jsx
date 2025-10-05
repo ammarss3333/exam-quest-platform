@@ -116,7 +116,8 @@ const QuestionModal = ({ question, categories, onClose, onSave }) => {
           setLoading(false);
           return;
         }
-        dataToSave.options = validPairs.map(p => p.item);
+        dataToSave.items = validPairs.map(p => p.item);
+        dataToSave.matches = validPairs.map(p => p.match);
         dataToSave.correctAnswer = validPairs;
       }
 

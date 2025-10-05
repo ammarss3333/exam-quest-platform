@@ -94,8 +94,6 @@ const TakeExam = () => {
     try {
       setLoading(true);
       const examData = await firestoreService.getOne('exams', examId);
-      console.log('Fetched examData:', examData);
-
       if (!examData) {
         alert('Exam not found');
         navigate('/student/exams');
@@ -108,7 +106,6 @@ const TakeExam = () => {
 
       // Load questions
       const questionIds = Array.isArray(examData.selectedQuestions) ? examData.selectedQuestions : [];
-      console.log("Question IDs from examData:", questionIds);
 
       if (questionIds.length === 0) {
         console.warn('Exam has no questions configured');
@@ -347,8 +344,7 @@ const TakeExam = () => {
           </h2>
           <p className="text-gray-600">            This exam doesn\'t have any questions yet. Please contact your instructor.
           </p>
-          <p className="text-gray-600">Debug Info: Exam Data: {JSON.stringify(exam)}</p>
-          <p className="text-gray-600">Debug Info: Question IDs: {JSON.stringify(questionIds)}</p>
+
         </div>
       </div>
     );
