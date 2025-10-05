@@ -21,29 +21,27 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
+      if (user && user.uid) {
         setCurrentUser(user);
-        if (user.uid) {
-          const userRef = doc(db, 'users', user.uid);
-          const userSnap = await getDoc(userRef);
-          if (userSnap.exists()) {
-            setUserProfile(userSnap.data() || {});
-          } else {
-            const newProfile = {
-              uid: user.uid,
-              email: user.email,
-              displayName: user.displayName,
-              photoURL: user.photoURL,
-              role: 'student',
-              points: 0,
-              level: 1,
-              badges: [],
-              streak: 0,
-              createdAt: new Date()
-            };
-            await setDoc(userRef, newProfile);
-            setUserProfile(newProfile || {});
-          }
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          setUserProfile(userSnap.data() || {});
+        } else {
+          const newProfile = {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            photoURL: user.photoURL,
+            role: 'student',
+            points: 0,
+            level: 1,
+            badges: [],
+            streak: 0,
+            createdAt: new Date()
+          };
+          await setDoc(userRef, newProfile);
+          setUserProfile(newProfile || {});
         }
       } else {
         setCurrentUser(null);
