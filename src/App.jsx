@@ -114,7 +114,7 @@ function AppRoutes() {
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/exam-quest-platform">
       <AuthProvider>
         <AppRoutes />
       </AuthProvider>
