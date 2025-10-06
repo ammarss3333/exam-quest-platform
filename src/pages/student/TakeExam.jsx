@@ -453,7 +453,7 @@ const TakeExam = () => {
             </h2>
 
             {/* Question Image */}
-            {currentQuestion.imageUrl && typeof currentQuestion.imageUrl === 'string' && (
+            {currentQuestion.imageUrl && typeof currentQuestion.imageUrl === 'string' && currentQuestion.imageUrl !== '' && (
               <div className="mb-6">
                 <img
                   src={currentQuestion.imageUrl || ''}
