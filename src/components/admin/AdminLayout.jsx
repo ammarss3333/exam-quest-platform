@@ -89,7 +89,7 @@ const AdminLayout = () => {
               <div className="p-4 border-t border-white/20">
                 <div className="flex items-center gap-3 mb-4">
                   <img
-                    src={userProfile?.photoURL || 'https://via.placeholder.com/40'}
+                    src={userProfile?.photoURL ? userProfile.photoURL : 'https://via.placeholder.com/40'}
                     alt="Profile"
                     className="w-10 h-10 rounded-full border-2 border-white"
                   />

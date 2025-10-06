@@ -78,7 +78,7 @@ const Students = () => {
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-3">
                       {student.photoURL ? (
-                        <img src={student.photoURL} alt="" className="w-10 h-10 rounded-full" />
+                        <img src={student.photoURL ? student.photoURL : 'https://via.placeholder.com/40'} alt="" className="w-10 h-10 rounded-full" />
                       ) : (
                         <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold">
                           {student.displayName?.charAt(0) || 'U'}

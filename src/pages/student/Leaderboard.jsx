@@ -52,7 +52,7 @@ const Leaderboard = () => {
                 
                 <div className="flex items-center gap-3 flex-1">
                   {student.photoURL ? (
-                    <img src={student.photoURL} alt="" className="w-12 h-12 rounded-full" />
+                    <img src={student.photoURL ? student.photoURL : 'https://via.placeholder.com/40'} alt="" className="w-12 h-12 rounded-full" />
                   ) : (
                     <div className="w-12 h-12 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-xl">
                       {student.displayName?.charAt(0) || 'U'}
