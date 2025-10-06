@@ -456,7 +456,7 @@ const TakeExam = () => {
             {currentQuestion.imageUrl && typeof currentQuestion.imageUrl === 'string' && (
               <div className="mb-6">
                 <img
-                  src={currentQuestion.imageUrl}
+                  src={currentQuestion.imageUrl || ''}
                   alt="Question"
                   className="w-full max-h-96 object-contain rounded-lg border-2 border-gray-200"
                 />
