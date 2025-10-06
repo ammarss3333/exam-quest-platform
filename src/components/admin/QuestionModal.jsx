@@ -11,7 +11,7 @@ const QuestionModal = ({ question, categories, onClose, onSave }) => {
     category: '',
     question: '',
     passage: '', // For reading comprehension
-    imageUrl: '', // For question images
+
     options: ['', '', '', ''],
     correctAnswer: '',
     points: 10,
@@ -21,17 +21,15 @@ const QuestionModal = ({ question, categories, onClose, onSave }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState('');
+
 
   useEffect(() => {
     if (question) {
-      setFormData({
+setFormData({
         type: question.type || 'mcq',
         category: question.category || '',
         question: question.question || '',
         passage: question.passage || '',
-        imageUrl: question.imageUrl || '',
         options: question.options || ['', '', '', ''],
         correctAnswer: question.correctAnswer || '',
         points: question.points || 10,
@@ -41,9 +39,7 @@ const QuestionModal = ({ question, categories, onClose, onSave }) => {
           ? question.correctAnswer 
           : [{ item: '', match: '' }]
       });
-      if (question.imageUrl) {
-        setImagePreview(question.imageUrl);
-      }
+
     }
   }, [question]);
 
@@ -66,11 +62,7 @@ const QuestionModal = ({ question, categories, onClose, onSave }) => {
         return;
       }
 
-      // Upload image if new file is selected
-      let imageUrl = formData.imageUrl;
-      if (imageFile) {
-        imageUrl = await storageService.uploadImage(imageFile, 'questions');
-      }
+
 
       // Prepare data based on question type
       let dataToSave = {
@@ -170,37 +162,9 @@ const QuestionModal = ({ question, categories, onClose, onSave }) => {
     setFormData({ ...formData, dragDropPairs: newPairs });
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        setError('Please select a valid image file');
-        return;
-      }
-      
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Image size should be less than 5MB');
-        return;
-      }
 
-      setImageFile(file);
-      
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
-  const removeImage = () => {
-    setImageFile(null);
-    setImagePreview('');
-    setFormData({ ...formData, imageUrl: '' });
-  };
+
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
