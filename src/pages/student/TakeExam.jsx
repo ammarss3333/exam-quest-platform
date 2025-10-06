@@ -452,16 +452,7 @@ const TakeExam = () => {
               {currentQuestion.question || 'This question is unavailable.'}
             </h2>
 
-            {/* Question Image */}
-            {currentQuestion.imageUrl && typeof currentQuestion.imageUrl === 'string' && currentQuestion.imageUrl !== '' && (
-              <div className="mb-6">
-                <img
-                  src={currentQuestion.imageUrl || ''}
-                  alt="Question"
-                  className="w-full max-h-96 object-contain rounded-lg border-2 border-gray-200"
-                />
-              </div>
-            )}
+
 
             {/* Answer Options */}
             <div className="space-y-4 mt-6">

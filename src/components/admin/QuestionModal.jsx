@@ -299,48 +299,7 @@ const QuestionModal = ({ question, categories, onClose, onSave }) => {
             />
           </div>
 
-          {/* Image Upload */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Question Image (Optional)
-            </label>
-            {imagePreview ? (
-              <div className="relative">
-                <img 
-                  src={imagePreview} 
-                  alt="Question preview" 
-                  className="w-full max-h-64 object-contain rounded-lg border-2 border-gray-200"
-                />
-                <button
-                  type="button"
-                  onClick={removeImage}
-                  className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 shadow-lg"
-                >
-                  <FaTrash />
-                </button>
-              </div>
-            ) : (
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 transition-colors">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="hidden"
-                  id="image-upload"
-                />
-                <label 
-                  htmlFor="image-upload" 
-                  className="cursor-pointer flex flex-col items-center"
-                >
-                  <svg className="w-12 h-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <span className="text-blue-600 font-semibold">Click to upload image</span>
-                  <span className="text-xs text-gray-500 mt-1">PNG, JPG, GIF up to 5MB</span>
-                </label>
-              </div>
-            )}
-          </div>
+
 
           {/* Options for MCQ and Reading Comprehension */}
           {(formData.type === 'mcq' || formData.type === 'reading-comprehension') && (
