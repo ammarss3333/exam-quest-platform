@@ -99,7 +99,7 @@ const TakeExam = () => {
       const durationInMinutes = Number(examData.duration) || 0;
       setTimeLeft(durationInMinutes * 60); // Convert minutes to seconds
 
-      const questionIds = Array.isArray(examData.selectedQuestions) ? examData.selectedQuestions : [];
+      const questionIds = examData?.selectedQuestions && Array.isArray(examData.selectedQuestions) ? examData.selectedQuestions : [];
 
       if (questionIds.length === 0) {
         setQuestions([]);
