@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
@@ -12,7 +12,7 @@ import {
 import { firestoreService } from '../../services/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 
-const DraggableItem = ({ item, index, onDragStart }) => {
+const DraggableItem = ({ item, index, onDragStart, isDropped }) => {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'ITEM',
     item: { item, index },
@@ -24,20 +24,17 @@ const DraggableItem = ({ item, index, onDragStart }) => {
   return (
     <div
       ref={drag}
-      className={`bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-3 rounded-lg cursor-move shadow-lg hover:shadow-xl transition-all ${
-        isDragging ? 'opacity-50' : 'opacity-100'
-      }`}
+      className={`bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-3 rounded-lg cursor-move shadow-lg hover:shadow-xl transition-all ${isDragging ? 'opacity-50' : 'opacity-100'} ${isDropped ? 'pointer-events-none opacity-70' : ''}`}
     >
       {item}
     </div>
   );
 };
 
-const DropZone = ({ match, onDrop, droppedItem }) => {
+const DropZone = ({ match, onDrop, droppedItem, onRemove }) => {
   const [{ isOver }, drop] = useDrop(() => ({
     accept: 'ITEM',
     drop: (item) => onDrop(item.item, match),
-
     collect: (monitor) => ({
       isOver: !!monitor.isOver(),
     }),
@@ -46,18 +43,15 @@ const DropZone = ({ match, onDrop, droppedItem }) => {
   return (
     <div
       ref={drop}
-      className={`border-2 border-dashed rounded-lg p-4 min-h-[60px] transition-all ${
-        isOver
-          ? 'border-blue-500 bg-blue-50'
-          : droppedItem
-          ? 'border-green-500 bg-green-50'
-          : 'border-gray-300 bg-gray-50'
-      }`}
+      className={`border-2 border-dashed rounded-lg p-4 min-h-[60px] transition-all ${isOver ? 'border-blue-500 bg-blue-50' : droppedItem ? 'border-green-500 bg-green-50' : 'border-gray-300 bg-gray-50'}`}
     >
       <p className="text-sm font-semibold text-gray-700 mb-2">{match}</p>
       {droppedItem && (
-        <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 py-2 rounded-lg text-sm">
+        <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 py-2 rounded-lg text-sm flex justify-between items-center">
           {droppedItem}
+          <button onClick={() => onRemove(match)} className="ml-2 text-white hover:text-red-200">
+            <FaTimes />
+          </button>
         </div>
       )}
     </div>
@@ -89,7 +83,7 @@ const TakeExam = () => {
     } else if (timeLeft === 0 && exam) {
       handleSubmit();
     }
-  }, [timeLeft, exam]); // Added exam to dependency array
+  }, [timeLeft, exam, handleSubmit]); // Added handleSubmit to dependency array
 
   const loadExam = async () => {
     try {
@@ -102,17 +96,13 @@ const TakeExam = () => {
       }
 
       setExam(examData);
-      console.log("Fetched examData:", examData);
       const durationInMinutes = Number(examData.duration) || 0;
       setTimeLeft(durationInMinutes * 60); // Convert minutes to seconds
 
-      // Load questions
       const questionIds = Array.isArray(examData.selectedQuestions) ? examData.selectedQuestions : [];
-      console.log("Extracted questionIds:", questionIds);
 
       if (questionIds.length === 0) {
-        console.warn("Exam has no questions configured");
-        setQuestions([]); // Ensure questions state is an empty array
+        setQuestions([]);
         setLoading(false);
         return;
       }
@@ -121,7 +111,6 @@ const TakeExam = () => {
         firestoreService.getOne("questions", qId)
       );
       const loadedQuestions = await Promise.all(questionPromises);
-      console.log("Loaded questions:", loadedQuestions);
       setQuestions(
         loadedQuestions.filter((q) => q && typeof q === "object").map(q => ({ ...q, type: q.type || "mcq" }))
       );
@@ -134,26 +123,38 @@ const TakeExam = () => {
     }
   };
 
-  const handleAnswer = (answer) => {
-    setAnswers({
-      ...answers,
+  const handleAnswer = useCallback((answer) => {
+    setAnswers(prevAnswers => ({
+      ...prevAnswers,
       [currentQuestionIndex]: answer
-    });
-  };
+    }));
+  }, [currentQuestionIndex]);
 
-  const handleDragDrop = (item, match) => {
+  const handleDragDrop = useCallback((item, match) => {
     setDragDropAnswers(prevAnswers => {
-      const newCurrentQuestionAnswers = { ...prevAnswers[currentQuestionIndex] };
+      const currentQuestionAnswers = prevAnswers[currentQuestionIndex] || {};
+      const newCurrentQuestionAnswers = { ...currentQuestionAnswers };
 
-      // Remove the item if it was previously dropped into another match
+      // Check if the item is already dropped somewhere else for this question
+      let itemAlreadyDropped = false;
       for (const key in newCurrentQuestionAnswers) {
         if (newCurrentQuestionAnswers[key] === item) {
+          // If the item is dropped in the *same* match, do nothing (no change)
+          if (key === match) {
+            itemAlreadyDropped = true;
+            break;
+          }
+          // If the item is dropped in a *different* match, remove it from the old match
           delete newCurrentQuestionAnswers[key];
         }
       }
 
-      // Add the new item-match pair
-      newCurrentQuestionAnswers[match] = item;
+      if (!itemAlreadyDropped) {
+        // If the target match already has an item, remove it first (optional, depends on desired behavior)
+        // For now, we allow overwriting, but the draggable item itself will be marked as used.
+        // If we want to prevent overwriting, we'd add a check here.
+        newCurrentQuestionAnswers[match] = item;
+      }
 
       const updatedDragDropAnswers = {
         ...prevAnswers,
@@ -166,7 +167,25 @@ const TakeExam = () => {
 
       return updatedDragDropAnswers;
     });
-  };
+  }, [currentQuestionIndex, handleAnswer]);
+
+  const handleRemoveDroppedItem = useCallback((match) => {
+    setDragDropAnswers(prevAnswers => {
+      const currentQuestionAnswers = prevAnswers[currentQuestionIndex] || {};
+      const newCurrentQuestionAnswers = { ...currentQuestionAnswers };
+      delete newCurrentQuestionAnswers[match];
+
+      const updatedDragDropAnswers = {
+        ...prevAnswers,
+        [currentQuestionIndex]: newCurrentQuestionAnswers
+      };
+
+      const pairs = Object.entries(newCurrentQuestionAnswers).map(([match, item]) => ({ item, match }));
+      handleAnswer(pairs);
+
+      return updatedDragDropAnswers;
+    });
+  }, [currentQuestionIndex, handleAnswer]);
 
   const handleNext = () => {
     if (currentQuestionIndex < questions.length - 1) {
@@ -180,7 +199,7 @@ const TakeExam = () => {
     }
   };
 
-  const calculateScore = () => {
+  const calculateScore = useCallback(() => {
     let score = 0;
     let totalPoints = 0;
 
@@ -194,7 +213,6 @@ const TakeExam = () => {
       const questionType = question?.type;
 
       if (questionType === 'drag-drop') {
-        // Check drag-drop answers
         const correctPairs = Array.isArray(question?.correctAnswer)
           ? question.correctAnswer
           : [];
@@ -216,7 +234,6 @@ const TakeExam = () => {
           }
         }
       } else if (questionType === 'short-answer') {
-        // Case-insensitive comparison for short answers
         if (
           typeof userAnswer === 'string' &&
           typeof question?.correctAnswer === 'string' &&
@@ -225,7 +242,6 @@ const TakeExam = () => {
           score += questionPoints;
         }
       } else {
-        // Direct comparison for MCQ, True/False, Reading Comprehension
         if (
           (Array.isArray(question?.correctAnswer) &&
             JSON.stringify(userAnswer) === JSON.stringify(question.correctAnswer)) ||
@@ -237,9 +253,9 @@ const TakeExam = () => {
     });
 
     return { score, totalPoints };
-  };
+  }, [questions, answers]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     if (submitting) return;
 
     const unanswered = questions.length - Object.keys(answers).length;
@@ -261,7 +277,6 @@ const TakeExam = () => {
       const { score, totalPoints } = calculateScore();
       const percentage = totalPoints > 0 ? (score / totalPoints) * 100 : 0;
 
-      // Save result
       const resultData = {
         examId,
         examTitle: exam.title,
@@ -285,7 +300,6 @@ const TakeExam = () => {
 
       await firestoreService.create('examResults', resultData);
 
-      // Update user points and level
       const pointsEarned = Math.round(score);
       const newPoints = (userProfile.points || 0) + pointsEarned;
       const newLevel = Math.floor(newPoints / 100) + 1;
@@ -295,7 +309,6 @@ const TakeExam = () => {
         level: newLevel
       });
 
-      // Celebration if passed
       if (percentage >= (exam.passingScore || 60)) {
         confetti({
           particleCount: 100,
@@ -304,7 +317,6 @@ const TakeExam = () => {
         });
       }
 
-      // Navigate to results
       navigate(`/student/exam-result/${examId}`, {
         state: { score, totalPoints, percentage, pointsEarned }
       });
@@ -313,7 +325,7 @@ const TakeExam = () => {
       alert('Failed to submit exam. Please try again.');
       setSubmitting(false);
     }
-  };
+  }, [submitting, questions, answers, timeLeft, currentUser, userProfile, calculateScore, exam, examId, updateUserProfile, navigate]);
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -354,7 +366,7 @@ const TakeExam = () => {
           <h2 className="text-xl font-semibold text-gray-800 mb-2">
             No questions available
           </h2>
-          <p className="text-gray-600">            This exam doesn\'t have any questions yet. Please contact your instructor.
+          <p className="text-gray-600">            This exam doesn't have any questions yet. Please contact your instructor.
           </p>
 
         </div>
@@ -368,6 +380,9 @@ const TakeExam = () => {
     ? ((currentQuestionIndex + 1) / questions.length) * 100
     : 0;
 
+  const droppedItemsForCurrentQuestion = dragDropAnswers[currentQuestionIndex] || {};
+  const isItemDropped = (item) => Object.values(droppedItemsForCurrentQuestion).includes(item);
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="max-w-4xl mx-auto">
@@ -380,9 +395,7 @@ const TakeExam = () => {
                 Question {currentQuestionIndex + 1} of {questions.length}
               </p>
             </div>
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold ${
-              timeLeft < 300 ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
-            }`}>
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold ${timeLeft < 300 ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
               <FaClock />
               <span>{formatTime(timeLeft)}</span>
             </div>
@@ -440,7 +453,7 @@ const TakeExam = () => {
             </h2>
 
             {/* Question Image */}
-            {currentQuestion.imageUrl && (
+            {currentQuestion.imageUrl && typeof currentQuestion.imageUrl === 'string' && (
               <div className="mb-6">
                 <img
                   src={currentQuestion.imageUrl}
@@ -461,18 +474,10 @@ const TakeExam = () => {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => handleAnswer(option)}
-                      className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                        answers[currentQuestionIndex] === option
-                          ? 'border-purple-500 bg-purple-50 shadow-lg'
-                          : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50/50'
-                      }`}
+                      className={`w-full text-left p-4 rounded-xl border-2 transition-all ${answers[currentQuestionIndex] === option ? 'border-purple-500 bg-purple-50 shadow-lg' : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50/50'}`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                          answers[currentQuestionIndex] === option
-                            ? 'border-purple-500 bg-purple-500'
-                            : 'border-gray-300'
-                        }`}>
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${answers[currentQuestionIndex] === option ? 'border-purple-500 bg-purple-500' : 'border-gray-300'}`}>
                           {answers[currentQuestionIndex] === option && (
                             <FaCheckCircle className="text-white text-sm" />
                           )}
@@ -487,19 +492,24 @@ const TakeExam = () => {
               {/* True/False */}
               {currentQuestionType === 'true-false' && (
                 <div className="grid grid-cols-2 gap-4">
-                  {['true', 'false'].map((option) => (
+                  {['true', 'false'].map((option, index) => (
                     <motion.button
-                      key={option}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
+                      key={index}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => handleAnswer(option)}
-                      className={`p-6 rounded-xl border-2 font-semibold text-lg transition-all ${
-                        answers[currentQuestionIndex] === option
-                          ? 'border-purple-500 bg-purple-50 shadow-lg'
-                          : 'border-gray-200 hover:border-purple-300'
-                      }`}
+                      className={`w-full text-left p-4 rounded-xl border-2 transition-all ${answers[currentQuestionIndex] === option ? 'border-purple-500 bg-purple-50 shadow-lg' : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50/50'}`}
                     >
-                      {option === 'true' ? '✓ True' : '✗ False'}
+                      <div className="flex items-center gap-3">
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${answers[currentQuestionIndex] === option ? 'border-purple-500 bg-purple-500' : 'border-gray-300'}`}>
+                          {answers[currentQuestionIndex] === option && (
+                            <FaCheckCircle className="text-white text-sm" />
+                          )}
+                        </div>
+                        <span className="font-medium text-gray-700">
+                          {option === 'true' ? '✓ True' : '✗ False'}
+                        </span>
+                      </div>
                     </motion.button>
                   ))}
                 </div>
@@ -522,7 +532,13 @@ const TakeExam = () => {
                   <div className="space-y-4">
                     <h3 className="font-semibold text-gray-700">Items</h3>
                     {(Array.isArray(currentQuestion.items) ? currentQuestion.items : []).map((item, idx) => (
-                      <DraggableItem key={idx} item={item} index={idx} onDragStart={() => {}} />
+                      <DraggableItem
+                        key={idx}
+                        item={item}
+                        index={idx}
+                        onDragStart={() => {}}
+                        isDropped={isItemDropped(item)}
+                      />
                     ))}
                   </div>
                   <div className="space-y-4">
@@ -532,7 +548,8 @@ const TakeExam = () => {
                         key={idx}
                         match={match}
                         onDrop={handleDragDrop}
-                        droppedItem={(dragDropAnswers[currentQuestionIndex] || {})[match]}
+                        droppedItem={droppedItemsForCurrentQuestion[match]}
+                        onRemove={handleRemoveDroppedItem}
                       />
                     ))}
                   </div>
