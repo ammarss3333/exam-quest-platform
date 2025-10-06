@@ -61,7 +61,7 @@ export const AuthProvider = ({ children }) => {
     try {
       await signInWithGoogle();
     } catch (error) {
-      console.error('Sign in error:', error);
+      console.error('Sign in error:', error.code, error.message);
       throw error;
     }
   };
