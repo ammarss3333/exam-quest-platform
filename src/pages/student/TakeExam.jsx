@@ -136,25 +136,16 @@ const TakeExam = () => {
       const newCurrentQuestionAnswers = { ...currentQuestionAnswers };
 
       // Check if the item is already dropped somewhere else for this question
-      let itemAlreadyDropped = false;
-      for (const key in newCurrentQuestionAnswers) {
-        if (newCurrentQuestionAnswers[key] === item) {
-          // If the item is dropped in the *same* match, do nothing (no change)
-          if (key === match) {
-            itemAlreadyDropped = true;
-            break;
-          }
-          // If the item is dropped in a *different* match, remove it from the old match
-          delete newCurrentQuestionAnswers[key];
+      // Remove the item from its previous match if it was already dropped elsewhere
+      for (const dropZoneMatch in newCurrentQuestionAnswers) {
+        if (newCurrentQuestionAnswers[dropZoneMatch] === item) {
+          delete newCurrentQuestionAnswers[dropZoneMatch];
+          break;
         }
       }
 
-      if (!itemAlreadyDropped) {
-        // If the target match already has an item, remove it first (optional, depends on desired behavior)
-        // For now, we allow overwriting, but the draggable item itself will be marked as used.
-        // If we want to prevent overwriting, we'd add a check here.
-        newCurrentQuestionAnswers[match] = item;
-      }
+      // Place the item in the new drop zone, overwriting any existing item in that zone
+      newCurrentQuestionAnswers[match] = item;
 
       const updatedDragDropAnswers = {
         ...prevAnswers,
