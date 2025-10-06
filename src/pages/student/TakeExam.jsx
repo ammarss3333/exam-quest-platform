@@ -107,9 +107,9 @@ const TakeExam = () => {
         return;
       }
 
-      const questionPromises = (questionIds || []).map((qId) =>
-        firestoreService.getOne("questions", qId)
-      );
+      const questionPromises = (questionIds || []).map((qId) => {
+        return firestoreService.getOne("questions", qId);
+      });
       const loadedQuestions = await Promise.all(questionPromises);
       setQuestions(
         loadedQuestions.filter((questionItem) => questionItem && typeof questionItem === "object").map(questionItem => ({ ...questionItem, type: questionItem.type || "mcq" }))
