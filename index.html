@@ -6,10 +6,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>exam-platform</title>
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.firebaseio.com https://www.gstatic.com https://www.googleapis.com https://accounts.google.com; img-src 'self' data: https://www.gstatic.com https://firebasestorage.googleapis.com https://ammarss3333.github.io https://ammarss3333.github.io https://via.placeholder.com https://lh3.googleusercontent.com https://www.google.com; script-src 'self' https://www.gstatic.com https://www.googleapis.com https://www.gstatic.com/firebasejs/ https://apis.google.com 'unsafe-inline' 'unsafe-eval' blob:; connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://securetoken.googleapis.com https://firestore.googleapis.com wss://firestore.googleapis.com https://identitytoolkit.googleapis.com https://accounts.google.com https://firebaseinstallations.googleapis.com; style-src 'self' 'unsafe-inline'; frame-src 'self' https://accounts.google.com https://learning-4a908.firebaseapp.com; child-src 'self' https://accounts.google.com;">
-    <script src="./coi-serviceworker.js"></script>
+    <script>
+      // Inline script to register coi-serviceworker.js
+      if (window.location.hostname !== 'localhost') {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('/exam-quest-platform/coi-serviceworker.js')
+            .then(registration => {
+              console.log('COI ServiceWorker registered successfully:', registration);
+            })
+            .catch(error => {
+              console.error('COI ServiceWorker registration failed:', error);
+            });
+        }
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <script type="module" src="./src/main.jsx"></script>
   </body>
 </html>
