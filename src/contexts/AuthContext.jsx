@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { auth, logOut, db } from '../services/firebase';
-import { GoogleAuthProvider, signInWithRedirect } from 'firebase/auth';
+import { auth, signInWithGoogle, logOut, db } from '../services/firebase';
 import { setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -60,8 +59,7 @@ export const AuthProvider = ({ children }) => {
 
   const signIn = async () => {
     try {
-      const provider = new GoogleAuthProvider();
-      await signInWithRedirect(auth, provider);
+      await signInWithGoogle();
     } catch (error) {
       console.error('Sign in error:', error.code, error.message);
       throw error;
