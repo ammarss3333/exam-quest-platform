@@ -112,7 +112,7 @@ const TakeExam = () => {
       );
       const loadedQuestions = await Promise.all(questionPromises);
       setQuestions(
-        loadedQuestions.filter((q) => q && typeof q === "object").map(q => ({ ...q, type: q.type || "mcq" }))
+        loadedQuestions.filter((questionItem) => questionItem && typeof questionItem === "object").map(questionItem => ({ ...questionItem, type: questionItem.type || "mcq" }))
       );
     } catch (error) {
       console.error('Error loading exam:', error);
