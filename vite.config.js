@@ -6,3 +6,4 @@ export default defineConfig({
   plugins: [react( )],
   base: '/exam-quest-platform/',
 })
+
