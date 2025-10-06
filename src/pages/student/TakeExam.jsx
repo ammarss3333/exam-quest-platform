@@ -107,7 +107,7 @@ const TakeExam = () => {
         return;
       }
 
-      const questionPromises = questionIds.map((qId) =>
+      const questionPromises = (questionIds || []).map((qId) =>
         firestoreService.getOne("questions", qId)
       );
       const loadedQuestions = await Promise.all(questionPromises);
